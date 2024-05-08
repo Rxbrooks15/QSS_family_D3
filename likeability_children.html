@@ -1,0 +1,319 @@
+Based on this visualization and a simple eye test, it is clear that the inclusion of children with candidates had 
+a negative effect on the overall likeability of candidates. It must be noted that likeability is based on the average across the outcome variables of a candidate
+: Trust, Community-oriented, integrity, resilience, and leadership. That means a higher overal value results in a better perception of the candidate.
+Because the alternate hypothesis predicted that the mean of the Treatment (Children) would increase while the treatemet (No Children) will decrease it appears that 
+There is either a small difference based on the t-test or a contrary effect to the predicted effect therefore showing that the results are not entirely staistically significant 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Confidence Interval Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="share_toggle.js"></script>
+  <script src="drop_down.js"></script>
+  <style>
+    /* Add your CSS styling here */
+    .error-bar {
+      stroke: rgb(0, 0, 0);
+      stroke-width: 2;
+    }
+
+    .mean-circle {
+      fill: rgb(207, 81, 140);
+      stroke: black;
+      stroke-width: 2;
+      border-radius: 10;
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .chart {
+      width: 80%;
+    }
+    /* Updated styles for radio buttons */
+    .radio-container {
+          display: flex;
+          flex-direction: column; /* Change to column to arrange radios vertically */
+          align-items: right; /* Align items to the center horizontally */
+          margin-top: 20px;
+        }
+
+        .radio-label {
+          display: flex;
+          align-items: right;
+          margin-bottom: 5px; /* Adjust the margin between buttons as needed */
+        }
+
+        .radio-input {
+          display: none; /* Hide the actual radio input */
+        }
+
+        .radio-button {
+          position: relative;
+          width: 30px; /* Adjust the width as needed */
+          height: 15px; /* Adjust the height as needed */
+          background-color: red;
+          border-radius: 15px;
+          border: 2px solid rgb(20, 20, 20);
+        }
+
+        .radio-button:after {
+          content: '';
+          position: absolute;
+          width: 12px; /* Adjust the size of the inner circle as needed */
+          height: 12px; /* Adjust the size of the inner circle as needed */
+          border-radius: 50%;
+          background-color: rgb(22, 19, 19);
+          top: 1.4px;
+          left: 1px;
+          transition: all 0.5s;
+        }
+
+        .radio-input:checked + .radio-button::after {
+          left: calc(20px - 3px); /* Adjust the left position for the checked state */
+        }
+
+        .radio-input:checked + .radio-button {
+          background-color: green;
+        }
+
+        .radio-text {
+          margin-left: 10px; /* Adjust the margin between the radio and the text */
+          font-size: 12px;
+        }
+          /* Styles for the dropdown container */
+  #dropdown-container {
+    margin: 20px;
+  }
+
+  /* Styles for the dropdown menu */
+  #d3-dropdown {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Styles for the selected dropdown text */
+  #selected-dropdown {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+    </style>
+    
+  </style>
+</head>
+<body>
+  <div id="dropdown-container">
+    <select id="d3-dropdown" class="dropdown" data-target="dropdown-selected.html">
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Conditions and Information Below</option>
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Demographics and General Statistics</option>
+      <option value="Button2" data-target="likeability_married.html" class="dropdown-option">Likeability Visualization for Marital Condition</option>
+      <option value="Button3" data-target="likeability_children.html" class="dropdown-option">Likeability Visualization for Parental Condition</option>
+    </select>
+    <p id="selected-dropdown"></p>
+        
+  </div>
+  <div class="radio-container">
+    <label class="radio-label1" data-target="married.html">
+      <input type="radio" name="toggle-group" class="radio-input" />
+      <div class="radio-button"></div>
+      <div class="radio-text">Marital Status Condition</div>
+    </label>
+  
+    <label class="radio-label2" data-target="child.html">
+      <input type="radio" name="toggle-group" class="radio-input" />
+      <div class="radio-button"></div>
+      <div class="radio-text">Parental Status Condition</div>
+    </label>
+  
+    <label class="radio-label3" data-target="gender.html">
+      <input type="radio" name="toggle-group" class="radio-input" />
+      <div class="radio-button"></div>
+      <div class="radio-text">Gender Condition</div>
+    </label>
+  </div>
+</body>
+
+<script>
+    // Step 1: Load the data and filter based on Progress = 100, DistributionChannel = 'anonymous', and exclude NA values
+    d3.csv("QSS.csv").then(function(data) {
+      const filteredData = data.filter(d => +d.Progress === 100 && d.DistributionChannel === 'anonymous' && d.political_ideology !== 'NA');
+  
+      // Step 2: Map words to numerical values for trust, integrity, and community columns
+      const wordToNumber = {
+        'Strongly Disagree': 1,
+        'Disagree': 2,
+        'Neutral': 3,
+        'Agree': 4,
+        'Strongly Agree': 5
+      };
+  
+      // Apply mapping function to trust, integrity, and community columns
+      filteredData.forEach(d => {
+        d.trust = wordToNumber[d.trust];
+        d.integrity = wordToNumber[d.integrity];
+        d.community = wordToNumber[d.community];
+        d.resilient = wordToNumber[d.resilient];
+        d.leadership = wordToNumber[d.leadership];
+
+        // Step 2b: Map words to numerical values for 'MFC', 'MMN', 'MMC', 'MFN', 'MMN', 'DFN', 'DFC', 'DMC', 'DFN', 'control' columns
+    const columnsToMap = ['MFC','MMC','DFC', 'DMC','MFN','DMN','MMN','DFN','MN','control'];
+
+// Create a new column 'parental_status' based on specified conditions
+filteredData.forEach(d => {
+  if (columnsToMap.slice(0, 4).some(column => d[column])) {
+    d.condition = 'Children';
+  } else if (columnsToMap.slice(4, 9).some(column => d[column])) {
+    d.condition = 'No Children';
+  } else if (columnsToMap.slice(9, 10).some(column => d[column])) {
+    d.condition = 'Control';
+  }
+});
+// Log the filtered data to the console
+console.log(filteredData);
+
+        // Remove undefined or NA values in the condition column
+        filteredData.forEach(d => {
+          if (d.condition === undefined || d.condition === 'NA') {
+            delete d.condition;
+          }
+        });
+      });
+  
+      // Calculate average and variance for combined columns based on condition
+      const conditions = ['Children', 'No Children', 'Control'];
+  
+      const summaryData = conditions.map(condition => {
+        const conditionData = filteredData.filter(d => d.condition === condition);
+  
+        const sum = ['trust', 'resilient', 'community', 'leadership', 'integrity']
+          .reduce((acc, column) => acc + d3.mean(conditionData, d => d[column]), 0);
+  
+        const average = sum / 5;
+  
+        const varianceSum = ['trust', 'resilient', 'community', 'leadership', 'integrity']
+          .reduce((acc, column) => acc + d3.variance(conditionData, d => d[column]), 0);
+  
+        const totalVariance = varianceSum / 5;
+  
+        return { condition, average, totalVariance };
+      });
+  
+      // Log the summary data to the console
+      console.log(summaryData);
+  
+      // Function to create a chart
+      function createChart(chartId, summaryData) {
+        const width = window.innerWidth * 0.3;
+        const height = window.innerHeight * 0.8;
+        const svg = d3.select("body").append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("id", chartId)
+          .attr("class", "chart");
+  
+        const xScale = d3.scaleBand()
+          .domain(conditions)
+          .range([50, width +500])
+          .padding(0.2);
+  
+        const yScale = d3.scaleLinear()
+          .domain([1, 5])
+          .range([height - 50, 40]);
+
+          const svgXlabel = svg.append("text")
+        .attr("x", 400)
+        .attr("y", 595)
+        .text("Minor Conditions");
+
+        const svgText1 = svg.append("text")
+        .attr("x", -200)
+        .attr("y", 49)
+        .text("Averaged values across outcome variables")
+        .attr("transform", "rotate(-90, 40, 80)");
+
+        const svgtitlelabel = svg.append("text")
+        .attr("x", 450)
+        .attr("y", 10)
+        .text("Average Likeabilty of Candidate Based on Parental Status");
+  
+  
+        // Add error bars with ticks
+        svg.selectAll(".error-bar")
+          .data(summaryData)
+          .enter().append("line")
+          .attr("class", "error-bar")
+          .attr("x1", d => xScale(d.condition) + xScale.bandwidth() / 2)
+          .attr("y1", d => yScale(d.average - Math.sqrt(d.totalVariance)))
+          .attr("x2", d => xScale(d.condition) + xScale.bandwidth() / 2)
+          .attr("y2", d => yScale(d.average + Math.sqrt(d.totalVariance)))
+          .attr("stroke", "black");
+
+          // Add ticks to the ends of the variance lines
+const tickLength = 15;
+
+// Ticks at the bottom of the error bars
+svg.selectAll(".error-bar-tick-bottom")
+  .data(summaryData)
+  .enter().append("line")
+  .attr("class", "error-bar-tick-bottom")
+  .attr("x1", d => xScale(d.condition) + xScale.bandwidth() / 2 - tickLength / 2)
+  .attr("y1", d => yScale(d.average - Math.sqrt(d.totalVariance)))
+  .attr("x2", d => xScale(d.condition) + xScale.bandwidth() / 2 + tickLength / 2)
+  .attr("y2", d => yScale(d.average - Math.sqrt(d.totalVariance)))
+  .attr("stroke", "black");
+
+// Ticks at the top of the error bars
+svg.selectAll(".error-bar-tick-top")
+  .data(summaryData)
+  .enter().append("line")
+  .attr("class", "error-bar-tick-top")
+  .attr("x1", d => xScale(d.condition) + xScale.bandwidth() / 2 - tickLength / 2)
+  .attr("y1", d => yScale(d.average + Math.sqrt(d.totalVariance)))
+  .attr("x2", d => xScale(d.condition) + xScale.bandwidth() / 2 + tickLength / 2)
+  .attr("y2", d => yScale(d.average + Math.sqrt(d.totalVariance)))
+  .attr("stroke", "black");
+
+          const ControlLine = yScale(3.635);
+        svg.append("line")
+          .attr("x1", 50)
+          .attr("y1", ControlLine)
+          .attr("x2", width + 400)
+          .attr("y2", ControlLine)
+          .attr("stroke", "red")
+          .attr("stroke-dasharray", "5,5");
+
+          // Add mean circles
+        svg.selectAll(".mean-circle")
+          .data(summaryData)
+          .enter().append("circle")
+          .attr("class", "mean-circle")
+          .attr("cx", d => xScale(d.condition) + xScale.bandwidth() / 2)
+          .attr("cy", d => yScale(d.average))
+          .attr("r", 6.5);
+  
+  
+        // Add x-axis
+        svg.append("g")
+          .attr("transform", "translate(0," + (height - 50) + ")")
+          .call(d3.axisBottom(xScale));
+  
+        // Add y-axis
+        svg.append("g")
+          .attr("transform", "translate(50,0)")
+          .call(d3.axisLeft(yScale));
+      }
+  
+      // Create a chart for the combined columns based on condition
+      createChart('combinedChart', summaryData);
+  
+    });
+  </script>
+  </body>
+  </html>

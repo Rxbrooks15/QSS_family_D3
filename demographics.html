@@ -1,0 +1,345 @@
+Note that there were approximately 36 respondents (previously 28) in this survey study in total based 
+on filtering out individuals that did NOT fiinsh the survey. The first figure represents a pie chart 
+of individual races in the experiment and the second figure looks into the average values across all individuals to see variability and averages for the
+outcome variables I am interested in studying. 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Confidence Interval Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="share_toggle.js"></script>
+  <script src="drop_down.js"></script>
+  <style>
+   
+    /* Updated styles for radio buttons */
+    .radio-container {
+          display: flex;
+          flex-direction: column; /* Change to column to arrange radios vertically */
+          align-items: right; /* Align items to the center horizontally */
+          margin-top: 20px;
+        }
+
+        .radio-label {
+          display: flex;
+          align-items: right;
+          margin-bottom: 5px; /* Adjust the margin between buttons as needed */
+        }
+
+        .radio-input {
+          display: none; /* Hide the actual radio input */
+        }
+
+        .radio-button {
+          position: relative;
+          width: 30px; /* Adjust the width as needed */
+          height: 15px; /* Adjust the height as needed */
+          background-color: red;
+          border-radius: 15px;
+          border: 2px solid rgb(20, 20, 20);
+        }
+
+        .radio-button:after {
+          content: '';
+          position: absolute;
+          width: 12px; /* Adjust the size of the inner circle as needed */
+          height: 12px; /* Adjust the size of the inner circle as needed */
+          border-radius: 50%;
+          background-color: rgb(22, 19, 19);
+          top: 1.4px;
+          left: 1px;
+          transition: all 0.5s;
+        }
+
+        .radio-input:checked + .radio-button::after {
+          left: calc(20px - 3px); /* Adjust the left position for the checked state */
+        }
+
+        .radio-input:checked + .radio-button {
+          background-color: green;
+        }
+
+        .radio-text {
+          margin-left: 10px; /* Adjust the margin between the radio and the text */
+          font-size: 12px;
+        }
+         /* Add your CSS styling here */
+    .error-bar {
+      stroke: black;
+      stroke-width: 2;
+    }
+
+    .mean-circle {
+      fill: rgb(195, 0, 0);
+      stroke: black;
+      stroke-width: 2;
+      border-radius: 10;
+    }
+
+    .chart-container {
+  display: flex;
+  justify-content: center; /* Center the container horizontally */
+  align-items: center; /* Center the container vertically */
+  height: 100px; /* Use the full height of the viewport */
+}
+
+    .chart {
+      width: 30%;
+    }
+      /* Styles for the dropdown container */
+  #dropdown-container {
+    margin: 20px;
+  }
+
+  /* Styles for the dropdown menu */
+  #d3-dropdown {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Styles for the selected dropdown text */
+  #selected-dropdown {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+    </style>
+    
+  </style>
+</head>
+<body>
+  <div id="dropdown-container">
+    <select id="d3-dropdown" class="dropdown" data-target="dropdown-selected.html">
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Conditions and Information Below</option>
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Demographics and General Statistics</option>
+      <option value="Button2" data-target="likeability_married.html" class="dropdown-option">Likeability Visualization for Marital Condition</option>
+      <option value="Button3" data-target="likeability_children.html" class="dropdown-option">Likeability Visualization for Parental Condition</option>
+    </select>
+    <p id="selected-dropdown"></p>
+
+    </div>
+    <div class="radio-container">
+      <label class="radio-label1" data-target="married.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Marital Status Condition</div>
+      </label>
+    
+      <label class="radio-label2" data-target="child.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Parental Status Condition</div>
+      </label>
+    
+      <label class="radio-label3" data-target="gender.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Gender Condition</div>
+      </label>
+    </div>
+  </body>
+<script>
+    // Step 1: Load the data and filter based on Progress = 100, DistributionChannel = 'anonymous', and exclude N/A values
+    d3.csv("QSS.csv").then(function(data) {
+      const filteredData = data.filter(d => +d.Progress === 100 && d.DistributionChannel === 'anonymous' && d.political_ideology !== 'NA' && d.race !== 'N/A' && d.race.trim() !== '');
+  
+      // Step 2: Modify the data to create a "Mixed" category
+      const modifiedData = filteredData.map(d => {
+        // Combine Asian and White into "Mixed"
+        if (d.race === 'Asian,White') {
+          return { ...d, race: 'Mixed' };
+        }
+        return d;
+      });
+  
+      // Step 3: Extract unique races
+      const uniqueRaces = [...new Set(modifiedData.map(d => d.race))];
+  
+      // Step 4: Count occurrences of each race
+      const raceCounts = uniqueRaces.map(race => {
+        return {
+          race: race,
+          count: modifiedData.filter(d => d.race === race).length
+        };
+      });
+  
+      // Filter out slices with no name
+      const filteredRaceCounts = raceCounts.filter(d => d.race.trim() !== '');
+  
+      // Step 5: Set up the SVG container
+      const width = 600;
+      const height = 300;
+      const radius = Math.min(width, height) / 2;
+  
+      // Center both charts
+      const svg = d3.select('body').append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2}, ${height / 2})`);
+        // Create a wrapper for the pie chart and move it to the right
+    const pieWrapper = svg.append('g')
+        .attr('transform', `translate(${width / 1.5}, 0)`); // Adjust the translation values
+  
+      // Step 6: Create a pie chart
+      const pie = d3.pie().value(d => d.count);
+  
+      // Step 7: Define an arc generator
+      const arc = d3.arc()
+        .innerRadius(radius - 50)
+        .outerRadius(radius);
+  
+      // Step 8: Create pie chart slices
+      const slices = svg.selectAll('slice')
+        .data(pie(filteredRaceCounts))
+        .enter()
+        .append('g')
+        .attr('class', 'slice');
+
+        const svgXlabel = svg.append("text")
+        .attr("x", width/2-50)
+        .attr("y", 335)
+        .text("Outcome variables");
+
+        
+        const svgText = svg.append("text")
+        .attr("x", 42)
+        .attr("y", -140)
+        .text("Pie Chart Visualizing Respondent Races ");
+
+  
+      // Step 9: Draw the slices
+      slices.append('path')
+        .attr('d', arc)
+        .attr('fill', (d, i) => d3.schemeCategory10[i % d3.schemeCategory10.length]); // Use a color scale, repeat if needed
+  
+      // Step 10: Add labels with smaller font size
+      slices.append('text')
+        .attr('transform', d => `translate(${arc.centroid(d)})`)
+        .text(d => d.data.race)
+        .style('text-anchor', 'middle');
+
+      });
+ 
+  </script>
+  <script>
+     // Step 1: Load the data and filter based on Progress = 100, DistributionChannel = 'anonymous', and exclude N/A values
+     d3.csv("QSS.csv").then(function(data) {
+      const filteredData = data.filter(d => +d.Progress === 100 && d.DistributionChannel === 'anonymous' && d.political_ideology !== 'NA' && d.race !== 'N/A' && d.race.trim() !== '');
+
+      // Step 2: Map words to numerical values for trust, integrity, and community columns
+    const wordToNumber = {
+      'Strongly Disagree': 1,
+      'Disagree': 2,
+      'Neutral': 3,
+      'Agree': 4,
+      'Strongly Agree': 5
+    };
+    
+    // Apply mapping function to trust, integrity, and community columns
+    filteredData.forEach(d => {
+      d.trust = wordToNumber[d.trust];
+      d.integrity = wordToNumber[d.integrity];
+      d.community = wordToNumber[d.community];
+      
+    });
+     // Function to calculate mean and variance for a specific condition
+     function calculateSummaryData(data) {
+      const columns = ['trust', 'integrity', 'community'];
+      return columns.map(column => ({
+        column,
+        mean: d3.mean(data, d => +d[column]),
+        variance: d3.variance(data, d => +d[column])
+      }));
+    }
+
+    // Calculate mean and variance based on filtered data
+    const summaryData = calculateSummaryData(filteredData);
+
+    // Set up the SVG container for the mean and variance chart
+    const meanVarChartContainer = d3.select("body").append("div")
+      .attr("class", "chart-container");
+
+    // Create the mean and variance chart
+    createChart("mean-var-chart", summaryData);
+  });
+
+    //For line and dots
+    // Function to create a chart
+    function createChart(chartId, summaryData) {
+      //const width = window.innerWidth * 0.3;
+      const height = 350
+      const margin = { top: 30, right: 50, bottom: 50, left: 50 };
+      const width = 550
+      const svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("id", chartId)
+        .attr("class", "chart");
+  
+      const xScale = d3.scaleBand()
+        .domain(summaryData.map(d => d.column))
+        .range([50, width - 50])
+        .padding(0.2);
+  
+      const yScale = d3.scaleLinear()
+        .domain([1, 5])
+        .range([height - 50, 5]);
+
+         // Add SVG text element
+      const svgText = svg.append("text")
+        .attr("x", 100)
+        .attr("y", 10)
+        .text("Mean and Variance Across Outcome Variables ");
+
+
+        const svgXlabel = svg.append("text")
+        .attr("x", width/2-50)
+        .attr("y", 335)
+        .text("Outcome variables");
+         // Add SVG text element
+      const svgText1 = svg.append("text")
+        .attr("x", 5)
+        .attr("y", 60)
+        .text("Average values")
+        .attr("transform", "rotate(-90, 40, 80)");
+        
+  
+      // Add error bars
+      svg.selectAll(".error-bar")
+        .data(summaryData)
+        .enter().append("line")
+        .attr("class", "error-bar")
+        .attr("x1", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y1", d => yScale(d.mean - Math.sqrt(d.variance)))
+        .attr("x2", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y2", d => yScale(d.mean + Math.sqrt(d.variance)));
+  
+      // Add mean circles
+      svg.selectAll(".mean-circle")
+        .data(summaryData)
+        .enter().append("circle")
+        .attr("class", "mean-circle")
+        .attr("cx", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("cy", d => yScale(d.mean))
+        .attr("r", 6.5);
+  
+      // Add x-axis
+      svg.append("g")
+        .attr("transform", "translate(0," + (height - 50) + ")")
+        .call(d3.axisBottom(xScale));
+  
+      // Add y-axis
+      svg.append("g")
+        .attr("transform", "translate(50,0)")
+        .call(d3.axisLeft(yScale));
+
+        
+    }
+  
+  </script>
+  </body>
+  </html>

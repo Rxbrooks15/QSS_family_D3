@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Confidence Interval Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    /* Add your CSS styling here */
+    .error-bar {
+      stroke: black;
+      stroke-width: 2;
+    }
+
+    .mean-circle {
+      fill: red;
+      stroke: black;
+      stroke-width: 2;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  // Step 1: Load the data and filter based on Progress = 100, DistributionChannel = 'anonymous', and exclude NA values
+  d3.csv("QSS.csv").then(function(data) {
+    const filteredData = data.filter(d => +d.Progress === 100 && d.DistributionChannel === 'anonymous' && d.political_ideology !== 'NA');
+
+    // Step 2: Map words to numerical values for trust, integrity, and community columns
+    const wordToNumber = {
+      'Strongly Disagree': 1,
+      'Disagree': 2,
+      'Neutral': 3,
+      'Agree': 4,
+      'Strongly Agree': 5
+    };
+    
+    // Apply mapping function to trust, integrity, and community columns
+    filteredData.forEach(d => {
+      d.trust = wordToNumber[d.trust];
+      d.integrity = wordToNumber[d.integrity];
+      d.community = wordToNumber[d.community];
+    });
+
+    // Step 2b: Map words to numerical values for 'MFC', 'MMN', 'MMC', 'MFN', 'MMN', 'DFN', 'DFC', 'DMC', 'DFN', 'control' columns
+    const columnsToMap = ['MFC', 'MMN', 'MMC', 'MFN', 'MMN', 'DFN', 'DFC', 'DMC', 'DFN', 'control'];
+
+    const wordToNumberColumns = {
+      'Strongly Oppose': 1,
+      'Oppose': 2,
+      'Neutral': 3,
+      'Support': 4,
+      'Strongly Support': 5
+    };
+
+    // Create a new column 'marital_status' based on specified conditions
+    filteredData.forEach(d => {
+      if (columnsToMap.slice(0, 5).some(column => d[column])) {
+        d.marital = 'M';
+      } else if (columnsToMap.slice(5, 9).some(column => d[column])) {
+        d.marital = 'D';
+      } else if (d.control) {
+        d.marital = 'C';
+      }
+    });
+
+    // Separate data based on marital status
+    const maritalMData = filteredData.filter(d => d.marital === 'M');
+    const maritalDData = filteredData.filter(d => d.marital === 'D');
+
+    // Calculate mean and variance for trust, integrity, and community columns based on marital status
+    const columns = ['trust', 'integrity', 'community'];
+    
+    const summaryMData = columns.map(column => ({
+      column,
+      mean: d3.mean(maritalMData, d => d[column]),
+      variance: d3.variance(maritalMData, d => d[column])
+    }));
+
+    const summaryDData = columns.map(column => ({
+      column,
+      mean: d3.mean(maritalDData, d => d[column]),
+      variance: d3.variance(maritalDData, d => d[column])
+    }));
+
+    // Create a chart for marital status 'M'
+    createChart('chartM', summaryMData);
+
+    // Create a chart for marital status 'D'
+    createChart('chartD', summaryDData);
+
+    // Log the filtered data to the console
+    console.log(filteredData);
+
+    // Function to create a chart
+    function createChart(chartId, summaryData) {
+      const width = 400;
+      const height = 300;
+      const svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("id", chartId);
+
+      const xScale = d3.scaleBand()
+        .domain(columns)
+        .range([50, width - 50])
+        .padding(0.2);
+
+      const yScale = d3.scaleLinear()
+        .domain([1, 5])
+        .range([height - 50, 50]);
+
+      // Add error bars
+      svg.selectAll(".error-bar")
+        .data(summaryData)
+        .enter().append("line")
+        .attr("class", "error-bar")
+        .attr("x1", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y1", d => yScale(d.mean - Math.sqrt(d.variance)))
+        .attr("x2", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y2", d => yScale(d.mean + Math.sqrt(d.variance)));
+
+      // Add mean circles
+      svg.selectAll(".mean-circle")
+        .data(summaryData)
+        .enter().append("circle")
+        .attr("class", "mean-circle")
+        .attr("cx", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("cy", d => yScale(d.mean))
+        .attr("r", 5);
+
+      // Add x-axis
+      svg.append("g")
+        .attr("transform", "translate(0," + (height - 50) + ")")
+        .call(d3.axisBottom(xScale));
+
+      // Add y-axis
+      svg.append("g")
+        .attr("transform", "translate(50,0)")
+        .call(d3.axisLeft(yScale));
+    }
+
+  });
+</script>
+
+</body>
+</html>

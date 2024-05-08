@@ -1,0 +1,319 @@
+The child condition seems to be a minor condition of study and as it appears there is negative results on the predicted
+alternate hypothesis. We we this negative reaction for the candidate with children. Overall having or not having children is a weak treatment for whether 
+an individual will vote for a candidate even based on mundane issues
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Confidence Interval Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="share_toggle.js"></script>
+  <script src="drop_down.js"></script>
+  <style>
+    /* Add your CSS styling here */
+    .error-bar {
+      stroke: black;
+      stroke-width: 2;
+    }
+
+    .mean-circle {
+      fill: rgb(174, 255, 0);
+      stroke: black;
+      stroke-width: 2;
+      border-radius: 10;
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .chart {
+      width: 30%;
+    }
+    /* Updated styles for radio buttons */
+    .radio-container {
+          display: flex;
+          flex-direction: column; /* Change to column to arrange radios vertically */
+          align-items: right; /* Align items to the center horizontally */
+          margin-top: 20px;
+        }
+
+        .radio-label {
+          display: flex;
+          align-items: right;
+          margin-bottom: 5px; /* Adjust the margin between buttons as needed */
+        }
+
+        .radio-input {
+          display: none; /* Hide the actual radio input */
+        }
+
+        .radio-button {
+          position: relative;
+          width: 30px; /* Adjust the width as needed */
+          height: 15px; /* Adjust the height as needed */
+          background-color: red;
+          border-radius: 15px;
+          border: 2px solid rgb(20, 20, 20);
+        }
+
+        .radio-button:after {
+          content: '';
+          position: absolute;
+          width: 12px; /* Adjust the size of the inner circle as needed */
+          height: 12px; /* Adjust the size of the inner circle as needed */
+          border-radius: 50%;
+          background-color: rgb(22, 19, 19);
+          top: 1.4px;
+          left: 1px;
+          transition: all 0.5s;
+        }
+
+        .radio-input:checked + .radio-button::after {
+          left: calc(20px - 3px); /* Adjust the left position for the checked state */
+        }
+
+        .radio-input:checked + .radio-button {
+          background-color: green;
+        }
+
+        .radio-text {
+          margin-left: 10px; /* Adjust the margin between the radio and the text */
+          font-size: 12px;
+        }
+          /* Styles for the dropdown container */
+  #dropdown-container {
+    margin: 20px;
+  }
+
+  /* Styles for the dropdown menu */
+  #d3-dropdown {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Styles for the selected dropdown text */
+  #selected-dropdown {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+    </style>
+    
+  </style>
+</head>
+<body>
+  <div id="dropdown-container">
+    <select id="d3-dropdown" class="dropdown" data-target="dropdown-selected.html">
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Conditions and Information Below</option>
+      <option value="Button1" data-target="demographics.html" class="dropdown-option">Demographics and General Statistics</option>
+      <option value="Button2" data-target="likeability_married.html" class="dropdown-option">Likeability Visualization for Marital Condition</option>
+      <option value="Button3" data-target="likeability_children.html" class="dropdown-option">Likeability Visualization for Parental Condition</option>
+    </select>
+    <p id="selected-dropdown"></p>
+   
+    </div>
+    <div class="radio-container">
+      <label class="radio-label1" data-target="married.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Marital Status Condition</div>
+      </label>
+    
+      <label class="radio-label2" data-target="child.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Parental Status Condition</div>
+      </label>
+    
+      <label class="radio-label3" data-target="gender.html">
+        <input type="radio" name="toggle-group" class="radio-input" />
+        <div class="radio-button"></div>
+        <div class="radio-text">Gender Condition</div>
+      </label>
+    </div>
+  </body>
+<script>
+  // Step 1: Load the data and filter based on Progress = 100, DistributionChannel = 'anonymous', and exclude NA values
+  d3.csv("QSS.csv").then(function(data) {
+    const filteredData = data.filter(d => +d.Progress === 100 && d.DistributionChannel === 'anonymous' && d.political_ideology !== 'NA');
+
+    // Step 2: Map words to numerical values for trust, integrity, and community columns
+    const wordToNumber = {
+      'Strongly Disagree': 1,
+      'Disagree': 2,
+      'Neutral': 3,
+      'Agree': 4,
+      'Strongly Agree': 5
+    };
+    // Apply mapping function to trust, integrity, and community columns
+    filteredData.forEach(d => {
+      d.trust = wordToNumber[d.trust];
+      d.integrity = wordToNumber[d.integrity];
+      d.community = wordToNumber[d.community];
+    });
+
+    // Step 2b: Map words to numerical values for 'MFC', 'MMN', 'MMC', 'MFN', 'MMN', 'DFN', 'DFC', 'DMC', 'DFN', 'control' columns
+    const columnsToMap = ['MFC','MMC','DFC', 'DMC','MMN','MFN','DMN','MMN','DFN','DFN','MN','control'];
+
+    // Create a new column 'marital_status' based on specified conditions
+    filteredData.forEach(d => {
+      if (columnsToMap.slice(0, 4).some(column => d[column])) {
+        d.parental = 'CH';
+      } else if (columnsToMap.slice(4, 11).some(column => d[column])) {
+        d.parental = 'NCH';
+      } else if (columnsToMap.slice(11, 12).some(column => d[column])) {
+        d.parental = 'N';
+      }
+    });
+    // Log the filtered data to the console
+    console.log(filteredData);
+
+    // Separate data based on marital status
+    const parentalCHData = filteredData.filter(d => d.parental === 'CH');
+    const parentalNCHData = filteredData.filter(d => d.parental === 'NCH');
+    const parentalNData = filteredData.filter(d => d.parental === 'N');
+
+    // Calculate mean and variance for trust, integrity, and community columns based on marital status
+    const columns = ['trust', 'integrity','community'];
+    
+    const summaryCHData = columns.map(column => ({
+      column,
+      mean: d3.mean(parentalCHData, d => d[column]),
+      variance: d3.variance(parentalCHData, d => d[column])
+    }));
+
+    const summaryNCHData = columns.map(column => ({
+      column,
+      mean: d3.mean(parentalNCHData, d => d[column]),
+      variance: d3.variance(parentalNCHData, d => d[column])
+    }));
+
+    const summaryNData = columns.map(column => ({
+      column,
+      mean: d3.mean(parentalNData, d => d[column]),
+      variance: d3.variance(parentalNData, d => d[column])
+    }));
+
+
+    // Create charts for marital statuses
+    createChart('chartA', summaryCHData,'Mean and Variance of', ' Candidates WITH Children Based on Outcome Variables','Mean Values across Outcome Variables');
+    createChart('chartB', summaryNCHData,'Mean and Variance of', 'Candidates WITHOUT Children Based on Outcome Variables');
+    createChart('chartC', summaryNData,'Mean and Variance of', ' CONTROL GROUP Based on Outcome Variables');
+
+    // Log the filtered data to the console
+    console.log(filteredData);
+
+    // Function to create a chart
+    function createChart(chartId, summaryData,chartTitle,chartTitle2, chartYTitle) {
+      const width = window.innerWidth * 0.3;
+      const height = window.innerHeight * 0.8;
+      const svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("id", chartId)
+        .attr("class", "chart");
+
+      const xScale = d3.scaleBand()
+        .domain(columns)
+        .range([50, width - 50])
+        .padding(0.2);
+
+      const yScale = d3.scaleLinear()
+        .domain([1, 5])
+        .range([height - 50, 50]);
+
+      // Add error bars
+      svg.selectAll(".error-bar")
+        .data(summaryData)
+        .enter().append("line")
+        .attr("class", "error-bar")
+        .attr("x1", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y1", d => yScale(d.mean - Math.sqrt(d.variance)))
+        .attr("x2", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("y2", d => yScale(d.mean + Math.sqrt(d.variance)));
+
+      // Add mean circles
+      svg.selectAll(".mean-circle")
+        .data(summaryData)
+        .enter().append("circle")
+        .attr("class", "mean-circle")
+        .attr("cx", d => xScale(d.column) + xScale.bandwidth() / 2)
+        .attr("cy", d => yScale(d.mean))
+        .attr("r", 6.5);
+      // Dashed line with slope y = 3.2
+    const dashLineY = yScale(3.6);
+    svg.append("line")
+      .attr("x1", 50)
+      .attr("y1", dashLineY)
+      .attr("x2", width - 50)
+      .attr("y2", dashLineY)
+      .attr("stroke", "green")
+      .attr("stroke-dasharray", "5,5");
+
+      const dashLineYnew = yScale(4.2);
+    svg.append("line")
+      .attr("x1", 50)
+      .attr("y1", dashLineYnew)
+      .attr("x2", width - 50)
+      .attr("y2", dashLineYnew)
+      .attr("stroke", "blue")
+      .attr("stroke-dasharray", "5,5");  
+
+        const dashLineYnew1 = yScale(3.4);
+      svg.append("line")
+      .attr("x1", 50)
+      .attr("y1", dashLineYnew1)
+      .attr("x2", width - 50)
+      .attr("y2", dashLineYnew1)
+      .attr("stroke", "orange")
+      .attr("stroke-dasharray", "5,5");  
+
+      // Add x-axis
+      svg.append("g")
+        .attr("transform", "translate(0," + (height - 50) + ")")
+        .call(d3.axisBottom(xScale));
+      
+      // Add y-axis
+      svg.append("g")
+        .attr("transform", "translate(50,0)")
+        .call(d3.axisLeft(yScale));
+
+        // Add chart title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .text(chartTitle);
+
+    svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", 25)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .text(chartTitle2);
+
+    svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", 595)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .text("Outcome Variables");
+
+
+
+    svg.append("text")
+        .attr("x", -320)
+        .attr("y", 50)
+        .text(chartYTitle)
+        .attr("transform", "rotate(-90, 40, 80)");
+    }
+  });
+</script>
+</body>
+</html> 
